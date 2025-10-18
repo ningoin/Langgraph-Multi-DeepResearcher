@@ -19,9 +19,11 @@ Please ensure your queries account for the most current information available as
 
 <IMPORTANT CONSTRAINTS>
 - Keep your search query concise and focused
-- Maximum query length: 400 characters
+- Maximum query length: 400 characters (to be safe)
 - Use key terms and avoid unnecessary words
 - Focus on the most important aspects of the topic
+- Avoid redundant phrases like "tell me about" or "information about"
+- Use specific, targeted keywords
 </IMPORTANT CONSTRAINTS>
 
 <EXAMPLE>

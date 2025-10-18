@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  deep-researcher:
+    build: .
+    container_name: local-deep-researcher
+    environment:
+      # LLM Configuration
+      - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
+      - LOCAL_LLM=${LOCAL_LLM:-llama3}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434/}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      
+      # Search Configuration
+      - SEARCH_API=${SEARCH_API:-duckduckgo}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - PERPLEXITY_API_KEY=${PERPLEXITY_API_KEY}
+      - SEARXNG_URL=${SEARXNG_URL:-http://host.docker.internal:8888}
+      - FETCH_FULL_PAGE=${FETCH_FULL_PAGE:-true}
+      
+      # Research Configuration
+      - MAX_WEB_RESEARCH_LOOPS=${MAX_WEB_RESEARCH_LOOPS:-3}
+      
+      # Advanced Options
+      - USE_TOOL_CALLING=${USE_TOOL_CALLING:-false}
+      - STRIP_THINKING_TOKENS=${STRIP_THINKING_TOKENS:-true}
+    
+    volumes:
+      # Mount output directory to save research reports
+      - ./output:/app/output
+      # Mount current directory for development
+      - .:/app
+    
+    # Override default command
+    command: >
+      python -m Langgraph_deep_researcher
+      --topic "${RESEARCH_TOPIC:-人工智能发展趋势}"
+      --out "/app/output/${OUTPUT_FILE:-research_report.md}"
+      --provider "${LLM_PROVIDER:-ollama}"
+      --model "${LOCAL_LLM:-llama3}"
+      --loops "${MAX_WEB_RESEARCH_LOOPS:-3}"
+      --search "${SEARCH_API:-duckduckgo}"
+      ${USE_TOOL_CALLING:+--tool-calling}
+      ${STRIP_THINKING_TOKENS:+--no-strip-think}
+    
+    # Keep container running for interactive use
+    stdin_open: true
+    tty: true
+    
+    # Network configuration for Ollama access
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+# Example usage:
+# 
+# Basic usage:
+# docker-compose run --rm deep-researcher
+#
+# With custom topic:
+# RESEARCH_TOPIC="量子计算最新进展" docker-compose run --rm deep-researcher
+#
+# With custom output file:
+# RESEARCH_TOPIC="区块链技术" OUTPUT_FILE="blockchain_research.md" docker-compose run --rm deep-researcher
+#
+# With OpenAI:
+# LLM_PROVIDER=openai OPENAI_API_KEY=your_key RESEARCH_TOPIC="AI trends" docker-compose run --rm deep-researcher
+#
+# With Tavily search:
+# SEARCH_API=tavily TAVILY_API_KEY=your_key RESEARCH_TOPIC="Machine learning" docker-compose run --rm deep-researcher

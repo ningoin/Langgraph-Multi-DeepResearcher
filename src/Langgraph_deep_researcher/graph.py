@@ -11,8 +11,8 @@ from langchain_openai import ChatOpenAI
 from openai import OpenAI
 from langgraph.graph import START, END, StateGraph
 
-from ollama_deep_researcher.configuration import Configuration, SearchAPI
-from ollama_deep_researcher.utils import (
+from Langgraph_deep_researcher.configuration import Configuration, SearchAPI
+from Langgraph_deep_researcher.utils import (
     deduplicate_and_format_sources,
     tavily_search,
     format_sources,
@@ -23,12 +23,12 @@ from ollama_deep_researcher.utils import (
     clean_html_content,
     get_config_value,
 )
-from ollama_deep_researcher.state import (
+from Langgraph_deep_researcher.state import (
     SummaryState,
     SummaryStateInput,
     SummaryStateOutput,
 )
-from ollama_deep_researcher.prompts import (
+from Langgraph_deep_researcher.prompts import (
     query_writer_instructions,
     summarizer_instructions,
     reflection_instructions,
@@ -38,7 +38,6 @@ from ollama_deep_researcher.prompts import (
     json_mode_reflection_instructions,
     tool_calling_reflection_instructions,
 )
-from ollama_deep_researcher.lmstudio import ChatLMStudio
 
 # Constants
 MAX_TOKENS_PER_SOURCE = 1000
@@ -141,21 +140,7 @@ def get_llm(configurable: Configuration):
     Returns:
         Configured LLM instance
     """
-    if configurable.llm_provider == "lmstudio":
-        if configurable.use_tool_calling:
-            return ChatLMStudio(
-                base_url=configurable.lmstudio_base_url,
-                model=configurable.local_llm,
-                temperature=0,
-            )
-        else:
-            return ChatLMStudio(
-                base_url=configurable.lmstudio_base_url,
-                model=configurable.local_llm,
-                temperature=0,
-                format="json",
-            )
-    elif configurable.llm_provider == "openai":
+    if configurable.llm_provider == "openai":
         # Not used for generation in our OpenAI path; keep for compatibility elsewhere
         return ChatOpenAI(
             base_url=configurable.openai_base_url,
@@ -182,7 +167,7 @@ def generate_query(state: SummaryState, config: RunnableConfig):
     """LangGraph node that generates a search query based on the research topic.
 
     Uses an LLM to create an optimized search query for web research based on
-    the user's research topic. Supports both LMStudio and Ollama as LLM providers.
+    the user's research topic. Supports both OpenAI and Ollama as LLM providers.
 
     Args:
         state: Current graph state containing the research topic
@@ -346,13 +331,7 @@ def summarize_sources(state: SummaryState, config: RunnableConfig):
     configurable = Configuration.from_runnable_config(config)
 
     # For summarization, we don't need structured output, so always use regular mode
-    if configurable.llm_provider == "lmstudio":
-        llm = ChatLMStudio(
-            base_url=configurable.lmstudio_base_url,
-            model=configurable.local_llm,
-            temperature=0,
-        )
-    elif configurable.llm_provider == "openai":
+    if configurable.llm_provider == "openai":
         client = OpenAI(base_url=configurable.openai_base_url)
         completion = client.chat.completions.create(
             model=configurable.local_llm,

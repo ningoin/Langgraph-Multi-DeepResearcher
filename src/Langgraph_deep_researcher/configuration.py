@@ -14,7 +14,7 @@ class SearchAPI(Enum):
 
 
 class Configuration(BaseModel):
-    """The configurable fields for the research assistant."""
+    """集中管理研究助手的所有可配置项"""
 
     max_web_research_loops: int = Field(
         default=3,
@@ -22,14 +22,14 @@ class Configuration(BaseModel):
         description="Number of research iterations to perform",
     )
     local_llm: str = Field(
-        default="llama3.2",
+        default="llama3",
         title="LLM Model Name",
         description="Name of the LLM model to use",
     )
-    llm_provider: Literal["ollama", "lmstudio", "openai"] = Field(
-        default="ollama",
+    llm_provider: Literal["ollama", "openai"] = Field(
+        default="openai",
         title="LLM Provider",
-        description="Provider for the LLM (Ollama or LMStudio)",
+        description="Provider for the LLM (ollama or openAI)",
     )
     search_api: Literal["perplexity", "tavily", "duckduckgo", "searxng"] = Field(
         default="duckduckgo", title="Search API", description="Web search API to use"
@@ -43,11 +43,6 @@ class Configuration(BaseModel):
         default="http://localhost:11434/",
         title="Ollama Base URL",
         description="Base URL for Ollama API",
-    )
-    lmstudio_base_url: str = Field(
-        default="http://localhost:1234/v1",
-        title="LMStudio Base URL",
-        description="Base URL for LMStudio OpenAI-compatible API",
     )
     openai_base_url: str = Field(
         default="https://api.openai.com/v1",

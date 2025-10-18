@@ -2,6 +2,7 @@ FROM --platform=$BUILDPLATFORM python:3.11-slim
 
 WORKDIR /app
 
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
@@ -11,29 +12,36 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     rustc \
     cargo \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv package manager (use pip for safer cross-arch install)
-RUN pip install uv
-ENV PATH="/root/.local/bin:${PATH}"
-
-# 2) Copy the repository content
+# Copy the repository content
 COPY . /app
 
-# 3) Provide default environment variables to point to Ollama (running elsewhere)
-#    Adjust the OLLAMA_URL to match your actual Ollama container or service.
-ENV OLLAMA_BASE_URL="http://localhost:11434/"
+# Set default environment variables
+# LLM Configuration
+ENV LLM_PROVIDER="ollama"
+ENV LOCAL_LLM="llama3"
+ENV OLLAMA_BASE_URL="http://host.docker.internal:11434/"
+ENV OPENAI_BASE_URL="https://api.openai.com/v1"
 
-# 4) Expose the port that LangGraph dev server uses (default: 2024)
-EXPOSE 2024
+# Search Configuration
+ENV SEARCH_API="duckduckgo"
+ENV FETCH_FULL_PAGE="true"
 
-# 5) Launch the assistant with the LangGraph dev server:
-#    Equivalent to the quickstart: uvx --refresh --from "langgraph-cli[inmem]" --with-editable . --python 3.11 langgraph dev
-CMD ["uvx", \
-     "--refresh", \
-     "--from", "langgraph-cli[inmem]", \
-     "--with-editable", ".", \
-     "--python", "3.11", \
-     "langgraph", \
-     "dev", \
-     "--host", "0.0.0.0"]
+# Research Configuration
+ENV MAX_WEB_RESEARCH_LOOPS="3"
+
+# Advanced Options
+ENV USE_TOOL_CALLING="false"
+ENV STRIP_THINKING_TOKENS="true"
+
+# Install dependencies
+RUN pip install --no-cache-dir -e .
+
+# Create output directory for research reports
+RUN mkdir -p /app/output
+
+# Set default command to run the research assistant
+# Users can override this by providing their own command with --topic and --out parameters
+CMD ["python", "-m", "Langgraph_deep_researcher", "--help"]
