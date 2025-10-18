@@ -52,6 +52,38 @@ def strip_thinking_tokens(text: str) -> str:
     return text
 
 
+def clean_html_content(text: str) -> str:
+    """
+    Clean HTML content from text to make it suitable for LLM processing.
+    
+    Removes HTML tags, scripts, and other non-text elements while preserving
+    the actual content.
+    
+    Args:
+        text (str): The text that may contain HTML
+        
+    Returns:
+        str: Cleaned text with HTML removed
+    """
+    import re
+    
+    # Remove script and style elements completely
+    text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.DOTALL | re.IGNORECASE)
+    
+    # Remove HTML comments
+    text = re.sub(r'<!--.*?-->', '', text, flags=re.DOTALL)
+    
+    # Remove HTML tags but keep the content
+    text = re.sub(r'<[^>]+>', '', text)
+    
+    # Clean up extra whitespace
+    text = re.sub(r'\s+', ' ', text)
+    text = text.strip()
+    
+    return text
+
+
 def deduplicate_and_format_sources(
     search_response: Union[Dict[str, Any], List[Dict[str, Any]]],
     max_tokens_per_source: int,
@@ -102,8 +134,10 @@ def deduplicate_and_format_sources(
     for i, source in enumerate(unique_sources.values(), 1):
         formatted_text += f"Source: {source['title']}\n===\n"
         formatted_text += f"URL: {source['url']}\n===\n"
+        # Clean HTML content from the main content field
+        cleaned_content = clean_html_content(source['content'])
         formatted_text += (
-            f"Most relevant content from source: {source['content']}\n===\n"
+            f"Most relevant content from source: {cleaned_content}\n===\n"
         )
         if fetch_full_page:
             # Using rough estimate of characters per token
@@ -113,6 +147,10 @@ def deduplicate_and_format_sources(
             if raw_content is None:
                 raw_content = ""
                 print(f"Warning: No raw_content found for source {source['url']}")
+            
+            # Clean HTML content if present
+            raw_content = clean_html_content(raw_content)
+            
             if len(raw_content) > char_limit:
                 raw_content = raw_content[:char_limit] + "... [truncated]"
             formatted_text += f"Full source content limited to {max_tokens_per_source} tokens: {raw_content}\n\n"
@@ -143,6 +181,7 @@ def fetch_raw_content(url: str) -> Optional[str]:
     Fetch HTML content from a URL and convert it to markdown format.
 
     Uses a 10-second timeout to avoid hanging on slow sites or large pages.
+    Filters out JavaScript-heavy pages and returns None for SPA pages.
 
     Args:
         url (str): The URL to fetch content from
@@ -156,7 +195,37 @@ def fetch_raw_content(url: str) -> Optional[str]:
         with httpx.Client(timeout=10.0) as client:
             response = client.get(url)
             response.raise_for_status()
-            return markdownify(response.text)
+            html_content = response.text
+            
+            # Check if this is a JavaScript-heavy page (SPA)
+            js_indicators = [
+                '<div id="root"></div>',
+                '<div id="app"></div>',
+                'react',
+                'vue',
+                'angular',
+                'single page application',
+                'spa'
+            ]
+            
+            # If it's a SPA page, return None to use search snippet instead
+            if any(indicator.lower() in html_content.lower() for indicator in js_indicators):
+                print(f"Warning: Detected JavaScript-heavy page for {url}, using search snippet instead")
+                return None
+            
+            # Convert to markdown
+            markdown_content = markdownify(html_content)
+            
+            # Clean any remaining HTML tags
+            markdown_content = clean_html_content(markdown_content)
+            
+            # Filter out excessive HTML artifacts
+            if len(markdown_content) < 100 or markdown_content.count('<') > 10:
+                print(f"Warning: Poor content quality for {url}, using search snippet instead")
+                return None
+                
+            return markdown_content
+            
     except Exception as e:
         print(f"Warning: Failed to fetch full page content for {url}: {str(e)}")
         return None
@@ -201,7 +270,9 @@ def duckduckgo_search(
 
                 raw_content = content
                 if fetch_full_page:
-                    raw_content = fetch_raw_content(url)
+                    fetched_content = fetch_raw_content(url)
+                    if fetched_content:
+                        raw_content = fetched_content
 
                 # Add result to list
                 result = {
@@ -261,7 +332,9 @@ def searxng_search(
 
         raw_content = content
         if fetch_full_page:
-            raw_content = fetch_raw_content(url)
+            fetched_content = fetch_raw_content(url)
+            if fetched_content:
+                raw_content = fetched_content
 
         # Add result to list
         result = {
@@ -300,7 +373,26 @@ def tavily_search(
                                             fetch_full_page is True
     """
 
-    tavily_client = TavilyClient()
+    # Get API key from environment
+    api_key = os.getenv("TAVILY_API_KEY")
+    if not api_key:
+        raise ValueError("TAVILY_API_KEY environment variable is required for Tavily search")
+    
+    # Tavily has a 400 character limit for queries
+    MAX_QUERY_LENGTH = 400
+    if len(query) > MAX_QUERY_LENGTH:
+        print(f"Warning: Query length ({len(query)} chars) exceeds Tavily limit ({MAX_QUERY_LENGTH} chars). Truncating...")
+        # Truncate query to fit within limit, preserving word boundaries
+        truncated_query = query[:MAX_QUERY_LENGTH]
+        # Find the last complete word
+        last_space = truncated_query.rfind(' ')
+        if last_space > MAX_QUERY_LENGTH * 0.8:  # Only truncate at word boundary if it's not too short
+            query = truncated_query[:last_space]
+        else:
+            query = truncated_query
+        print(f"Truncated query: {query}")
+    
+    tavily_client = TavilyClient(api_key=api_key)
     return tavily_client.search(
         query, max_results=max_results, include_raw_content=fetch_full_page
     )

@@ -7,6 +7,8 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
+from openai import OpenAI
 from langgraph.graph import START, END, StateGraph
 
 from ollama_deep_researcher.configuration import Configuration, SearchAPI
@@ -18,6 +20,7 @@ from ollama_deep_researcher.utils import (
     duckduckgo_search,
     searxng_search,
     strip_thinking_tokens,
+    clean_html_content,
     get_config_value,
 )
 from ollama_deep_researcher.state import (
@@ -62,6 +65,39 @@ def generate_search_query_with_structured_output(
     Returns:
         Dictionary with "search_query" key
     """
+    # OpenAI path: call SDK directly to avoid LangChain response coercion issues
+    if configurable.llm_provider == "openai":
+        client = OpenAI(base_url=configurable.openai_base_url)
+        sdk_messages = [
+            {"role": "system", "content": messages[0].content},
+            {"role": "user", "content": messages[1].content},
+        ]
+        completion = client.chat.completions.create(
+            model=configurable.local_llm,
+            messages=sdk_messages,
+            response_format={"type": "json_object"},
+            temperature=0,
+        )
+        
+        # Handle different response formats
+        if hasattr(completion, 'choices') and completion.choices:
+            content = completion.choices[0].message.content or "{}"
+        elif isinstance(completion, str):
+            content = completion
+        else:
+            print(f"Warning: Unexpected completion format: {type(completion)}")
+            content = "{}"
+        try:
+            parsed_json = json.loads(content)
+            search_query = parsed_json.get(json_query_field)
+            if not search_query:
+                return {"search_query": fallback_query}
+            return {"search_query": search_query}
+        except (json.JSONDecodeError, KeyError):
+            if configurable.strip_thinking_tokens:
+                content = strip_thinking_tokens(content)
+            return {"search_query": fallback_query}
+
     if configurable.use_tool_calling:
         llm = get_llm(configurable).bind_tools([tool_class])
         result = llm.invoke(messages)
@@ -119,6 +155,13 @@ def get_llm(configurable: Configuration):
                 temperature=0,
                 format="json",
             )
+    elif configurable.llm_provider == "openai":
+        # Not used for generation in our OpenAI path; keep for compatibility elsewhere
+        return ChatOpenAI(
+            base_url=configurable.openai_base_url,
+            model=configurable.local_llm,
+            temperature=0,
+        )
     else:  # Default to Ollama
         if configurable.use_tool_calling:
             return ChatOllama(
@@ -282,6 +325,9 @@ def summarize_sources(state: SummaryState, config: RunnableConfig):
 
     # Most recent web research
     most_recent_web_research = state.web_research_results[-1]
+    
+    # Clean HTML content from web research
+    most_recent_web_research = clean_html_content(most_recent_web_research)
 
     # Build the human message
     if existing_summary:
@@ -306,6 +352,28 @@ def summarize_sources(state: SummaryState, config: RunnableConfig):
             model=configurable.local_llm,
             temperature=0,
         )
+    elif configurable.llm_provider == "openai":
+        client = OpenAI(base_url=configurable.openai_base_url)
+        completion = client.chat.completions.create(
+            model=configurable.local_llm,
+            messages=[
+                {"role": "system", "content": summarizer_instructions},
+                {"role": "user", "content": human_message_content},
+            ],
+            temperature=0,
+        )
+        # Handle different response formats
+        if hasattr(completion, 'choices') and completion.choices:
+            result_content = completion.choices[0].message.content or ""
+        elif isinstance(completion, str):
+            result_content = completion
+        else:
+            print(f"Warning: Unexpected completion format: {type(completion)}")
+            result_content = ""
+        running_summary = result_content
+        if configurable.strip_thinking_tokens:
+            running_summary = strip_thinking_tokens(running_summary)
+        return {"running_summary": running_summary}
     else:  # Default to Ollama
         llm = ChatOllama(
             base_url=configurable.ollama_base_url,

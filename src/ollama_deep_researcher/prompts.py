@@ -17,6 +17,13 @@ Please ensure your queries account for the most current information available as
 {research_topic}
 </TOPIC>
 
+<IMPORTANT CONSTRAINTS>
+- Keep your search query concise and focused
+- Maximum query length: 400 characters
+- Use key terms and avoid unnecessary words
+- Focus on the most important aspects of the topic
+</IMPORTANT CONSTRAINTS>
+
 <EXAMPLE>
 Example output:
 {{

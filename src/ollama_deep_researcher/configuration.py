@@ -26,7 +26,7 @@ class Configuration(BaseModel):
         title="LLM Model Name",
         description="Name of the LLM model to use",
     )
-    llm_provider: Literal["ollama", "lmstudio"] = Field(
+    llm_provider: Literal["ollama", "lmstudio", "openai"] = Field(
         default="ollama",
         title="LLM Provider",
         description="Provider for the LLM (Ollama or LMStudio)",
@@ -48,6 +48,11 @@ class Configuration(BaseModel):
         default="http://localhost:1234/v1",
         title="LMStudio Base URL",
         description="Base URL for LMStudio OpenAI-compatible API",
+    )
+    openai_base_url: str = Field(
+        default="https://api.openai.com/v1",
+        title="OpenAI Base URL",
+        description="Base URL for OpenAI-compatible API",
     )
     strip_thinking_tokens: bool = Field(
         default=True,
