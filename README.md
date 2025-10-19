@@ -28,7 +28,7 @@ Local Deep Researcher 是一个完全本地化的网络研究助手，支持使�
 
 ### 1. 克隆项目
 ```shell
-git clone https://github.com/langchain-ai/local-deep-researcher.git
+git clone [https://github.com/langchain-ai/local-deep-researcher.git](https://github.com/ningoin/Langgraph-Multi-DeepResearcher.git)
 cd local-deep-researcher
 ```
 
