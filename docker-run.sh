@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 # Local Deep Researcher Docker Run Script
