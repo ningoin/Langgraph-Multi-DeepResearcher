@@ -229,11 +229,6 @@ Local Deep Researcher 受到 [IterDRAG](https://arxiv.org/html/2410.04343v1#:~:t
 最终报告保存为 Markdown 文件，您可以查看、共享或进一步处理。
 
 
-## TypeScript 实现
-
-此项目的 TypeScript 移植版本（不包含 Perplexity 搜索）可在以下地址找到：
-https://github.com/PacoVK/ollama-deep-researcher-ts
-
 ## 作为 Docker 容器运行
 
 包含的 `Dockerfile` 将研究助手作为命令行工具运行。您必须单独运行 Ollama 并配置 `OLLAMA_BASE_URL` 环境变量。您也可以通过提供 `LOCAL_LLM` 环境变量来指定要使用的 Ollama 模型。
