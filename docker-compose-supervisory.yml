@@ -1,0 +1,58 @@
+# 主管架构系统 Docker Compose 配置
+version: '3.8'
+
+services:
+  supervisory-researcher:
+    build: .
+    container_name: supervisory-researcher
+    environment:
+      # LLM 配置
+      - LLM_PROVIDER=ollama
+      - LOCAL_LLM=llama3
+      - OLLAMA_BASE_URL=http://ollama:11434
+      
+      # 搜索配置
+      - SEARCH_API=duckduckgo
+      
+      # 研究配置
+      - MAX_WEB_RESEARCH_LOOPS=3
+      - FETCH_FULL_PAGE=true
+      
+      # 主管架构配置
+      - SUPERVISORY_MODE=true
+      - ENABLE_ANALYSIS_AGENT=true
+      - ENABLE_SYNTHESIS_AGENT=true
+      
+    volumes:
+      - ./output:/app/output
+      - ./logs:/app/logs
+    
+    depends_on:
+      - ollama
+    
+    command: >
+      python -m Langgraph_deep_researcher.supervisory_cli
+      "人工智能在医疗领域的最新应用和发展趋势"
+      --out /app/output/supervisory_report.md
+      --verbose
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama-supervisory
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    # 预下载模型
+    command: >
+      sh -c "
+        ollama serve &
+        sleep 10 &&
+        ollama pull llama3 &&
+        wait
+      "
+
+volumes:
+  ollama_data:
