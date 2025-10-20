@@ -1,6 +1,6 @@
-# Local Deep Researcher
+# LangGraph-Multi-DeepResearcher
 
-Local Deep Researcher 是一个完全本地化的网络研究助手，支持使用 [Ollama](https://ollama.com/search) 或 [OpenAI](https://openai.com/) 托管的任何 LLM。该项目提供两种研究模式：
+LangGraph-Multi-DeepResearcher 是一个基于LangGraph框架的本地化的多Agent研究助手，支持使用 [Ollama](https://ollama.com/search) 或 [OpenAI](https://openai.com/) 托管的任何 LLM。该项目提供两种研究模式：
 
 ## 🔥 核心功能
 
