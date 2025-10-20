@@ -29,7 +29,7 @@ Local Deep Researcher 是一个完全本地化的网络研究助手，支持使�
 ### 1. 克隆项目
 ```shell
 git clone https://github.com/ningoin/Langgraph-Multi-DeepResearcher.git
-cd local-deep-researcher
+cd Langgraph-Multi-DeepResearcher
 ```
 
 ### 2. 环境配置
